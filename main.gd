@@ -28,6 +28,7 @@ var velocities := PackedVector2Array()
 @onready var cohesion_slider: HSlider = %CohesionSlider
 @onready var force_slider: HSlider = %ForceSlider
 @onready var velocity_slider: HSlider = %VelocitySlider
+@onready var radius_slider: HSlider = %RadiusSlider
 
 # Label nodes for displaying current values
 @onready var separation_label: Label = %SeparationLabel
@@ -36,13 +37,15 @@ var velocities := PackedVector2Array()
 @onready var force_label: Label = %ForceLabel
 @onready var velocity_label: Label = %VelocityLabel
 @onready var number_of_boids_label: Label = %NumberOfBoidsLabel
+@onready var radius_label: Label = %RadiusLabel
 
 @onready var number_of_boids: HSlider = %NumberOfBoids
 @onready var restart_simulation_button: Button = %RestartSimulationButton
 
 func _ready():
-	number_of_boids.step = BOID_COUNT
+	number_of_boids.value = BOID_COUNT
 	number_of_boids_label.text = "Boids: %s" % str(BOID_COUNT).lpad(4)
+	radius_label.text = "Radius: %s" % str(NEIGHBOR_RADIUS)
 	_config_sliders()
 	_init_boid_data()
 	_init_multimesh()
@@ -70,19 +73,44 @@ func _process(delta):
 
 func _update_boid_positions_and_velocities(delta):
 	for i in range(BOID_COUNT):
-		var separation := _calc_separation(i)
-		var alignment := _calc_alignment(i)
-		var cohesion := _calc_cohesion(i)
-		var acceleration = (
-			separation * SEPARATION_WEIGHT +
-			alignment * ALIGNMENT_WEIGHT +
-			cohesion * COHESION_WEIGHT
-		)
+		var acceleration = _calc_flocking_forces(i)
 		velocities[i] += acceleration * delta
 		if velocities[i].length() > MAX_SPEED:
 			velocities[i] = velocities[i].normalized() * MAX_SPEED
 		positions[i] += velocities[i] * delta
 		_handle_boundaries(i)
+
+func _calc_flocking_forces(i: int) -> Vector2:
+	var separation = Vector2.ZERO
+	var alignment = Vector2.ZERO
+	var cohesion = Vector2.ZERO
+	var count = 0
+
+	# Single loop for all three forces
+	for j in range(BOID_COUNT):
+		if i == j:
+			continue
+		var dist_sq = positions[i].distance_squared_to(positions[j])
+		if dist_sq < NEIGHBOR_RADIUS * NEIGHBOR_RADIUS and dist_sq > 0:
+			separation += (positions[i] - positions[j]) / max(sqrt(dist_sq), 0.01)
+			alignment += velocities[j]
+			cohesion += positions[j]
+			count += 1
+
+	var steer = Vector2.ZERO
+	if count > 0:
+		# Process all three at once
+		separation = (separation / count).normalized() * MAX_SPEED - velocities[i]
+		alignment = ((alignment / count).normalized() * MAX_SPEED - velocities[i])
+		cohesion = (((cohesion / count) - positions[i]).normalized() * MAX_SPEED - velocities[i])
+
+		separation = separation.limit_length(MAX_FORCE)
+		alignment = alignment.limit_length(MAX_FORCE)
+		cohesion = cohesion.limit_length(MAX_FORCE)
+
+		steer = separation * SEPARATION_WEIGHT + alignment * ALIGNMENT_WEIGHT + cohesion * COHESION_WEIGHT
+
+	return steer
 
 func _calc_separation(i: int) -> Vector2:
 	var steer := Vector2.ZERO
@@ -220,11 +248,11 @@ func _on_velocity_slider_value_changed(value: float) -> void:
 
 
 func _on_restart_simulation_button_pressed() -> void:
-	BOID_COUNT = NEW_BOID_COUNT
 	positions.clear()
 	velocities.clear()
+	BOID_COUNT = NEW_BOID_COUNT
 	if birds.multimesh:
-		birds.multimesh.instance_count = NEW_BOID_COUNT
+		birds.multimesh.instance_count = BOID_COUNT
 	_init_boid_data()
 	_update_rotation_and_position_drawn()
 
@@ -232,3 +260,8 @@ func _on_restart_simulation_button_pressed() -> void:
 func _on_number_of_boids_value_changed(value: float) -> void:
 	NEW_BOID_COUNT = int(value)
 	number_of_boids_label.text = "Boids: %s" % str(NEW_BOID_COUNT).lpad(4)
+
+
+func _on_radius_slider_value_changed(value: float) -> void:
+	NEIGHBOR_RADIUS = value
+	radius_label.text = "Radius: %s" % str(NEIGHBOR_RADIUS)
