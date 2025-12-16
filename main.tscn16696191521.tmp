@@ -22,7 +22,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Control"]
-custom_minimum_size = Vector2(250, 0)
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -35,30 +35,6 @@ offset_right = 6.5
 grow_horizontal = 2
 grow_vertical = 0
 
-[node name="RestartSimulationButton" type="Button" parent="CanvasLayer/Control/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Restart"
-
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/Control/VBoxContainer"]
-layout_mode = 2
-
-[node name="NumberOfBoids" type="HSlider" parent="CanvasLayer/Control/VBoxContainer/HBoxContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-min_value = 10.0
-max_value = 200.0
-step = 10.0
-value = 10.0
-tick_count = 4
-ticks_on_borders = true
-
-[node name="NumberOfBoidsLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/HBoxContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-
 [node name="Separation" type="HBoxContainer" parent="CanvasLayer/Control/VBoxContainer"]
 layout_mode = 2
 
@@ -69,11 +45,11 @@ layout_mode = 2
 tick_count = 4
 ticks_on_borders = true
 
-[node name="SeparationLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/Separation"]
+[node name="SeparationLabe" type="Label" parent="CanvasLayer/Control/VBoxContainer/Separation"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "Separation"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Alignment" type="HBoxContainer" parent="CanvasLayer/Control/VBoxContainer"]
@@ -86,11 +62,11 @@ layout_mode = 2
 tick_count = 4
 ticks_on_borders = true
 
-[node name="AlignmentLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/Alignment"]
+[node name="AligmentLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/Alignment"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "Alignment"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Cohesion" type="HBoxContainer" parent="CanvasLayer/Control/VBoxContainer"]
@@ -105,9 +81,9 @@ ticks_on_borders = true
 
 [node name="CohesionLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/Cohesion"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "Cohesion"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Force" type="HBoxContainer" parent="CanvasLayer/Control/VBoxContainer"]
@@ -122,9 +98,9 @@ ticks_on_borders = true
 
 [node name="ForceLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/Force"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "Force"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Velocity" type="HBoxContainer" parent="CanvasLayer/Control/VBoxContainer"]
@@ -139,15 +115,13 @@ ticks_on_borders = true
 
 [node name="VelocityLabel" type="Label" parent="CanvasLayer/Control/VBoxContainer/Velocity"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "Velocity"
+horizontal_alignment = 1
 vertical_alignment = 1
 
-[connection signal="pressed" from="CanvasLayer/Control/VBoxContainer/RestartSimulationButton" to="." method="_on_restart_simulation_button_pressed"]
-[connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/HBoxContainer/NumberOfBoids" to="." method="_on_number_of_boids_value_changed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/Separation/SeparationSlider" to="." method="_on_separation_slider_value_changed"]
-[connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/Alignment/AlignmentSlider" to="." method="_on_alignment_slider_value_changed"]
+[connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/Alignment/AlignmentSlider" to="." method="_on_aligmentslider_value_changed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/Cohesion/CohesionSlider" to="." method="_on_cohesion_slider_value_changed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/Force/ForceSlider" to="." method="_on_force_slider_value_changed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer/Velocity/VelocitySlider" to="." method="_on_velocity_slider_value_changed"]
