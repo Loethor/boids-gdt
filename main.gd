@@ -16,13 +16,13 @@ var MAX_FORCE := 40.0
 # Box configuration
 const BOX_SIZE := 600.0
 const WINDOW_SIZE := 800.0
-const BOX_TOPLEFT := Vector2((WINDOW_SIZE - BOX_SIZE) / 2, 0)
+var BOX_TOPLEFT := Vector2.ZERO
 
 var positions := PackedVector2Array()
 var velocities := PackedVector2Array()
 
 # Spatial partitioning
-var grid = {}
+var grid: Dictionary[Vector2i, Array] = {}
 
 @onready var birds := MultiMeshInstance2D.new()
 
@@ -50,6 +50,7 @@ var frame_counter := 0
 var is_debug_enabled := false
 
 func _ready():
+	_update_box_position()
 	number_of_boids.value = BOID_COUNT
 	number_of_boids_label.text = "Boids: %s" % str(BOID_COUNT).lpad(4)
 	radius_label.text = "Radius: %s" % str(NEIGHBOR_RADIUS)
@@ -58,6 +59,13 @@ func _ready():
 	_init_multimesh()
 	_update_rotation_and_position_drawn()
 	queue_redraw()
+
+func _update_box_position():
+	var viewport_size = get_viewport_rect().size
+	BOX_TOPLEFT = Vector2(
+		(viewport_size.x - BOX_SIZE) / 2,
+		0
+	)
 
 func _init_boid_data():
 	for i in BOID_COUNT:
@@ -101,7 +109,7 @@ func _get_nearby_boids(i: int) -> Array:
 	var cell_x:int = int((positions[i].x - BOX_TOPLEFT.x) / cell_size)
 	var cell_y:int = int((positions[i].y - BOX_TOPLEFT.y) / cell_size)
 
-	var nearby = []
+	var nearby: Array[int] = []
 
 	# Check 3x3 grid around the boid's cell
 	for dx in range(-1, 2):
@@ -211,7 +219,7 @@ func _make_boid_mesh() -> ArrayMesh:
 		Vector2(0, 8)
 	])
 	var indices = PackedInt32Array([0, 1, 2])
-	var arrays = []
+	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_INDEX] = indices
