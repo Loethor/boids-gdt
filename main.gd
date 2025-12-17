@@ -47,6 +47,7 @@ var grid: Dictionary[Vector2i, Array]= {}  # Dictionary: Vector2i -> Array[int] 
 
 var update_frequency := 2  # Update every frame by default
 var frame_counter := 0
+var is_debug_enabled := false
 
 func _ready():
 	number_of_boids.value = BOID_COUNT
@@ -56,6 +57,7 @@ func _ready():
 	_init_boid_data()
 	_init_multimesh()
 	_update_rotation_and_position_drawn()
+	queue_redraw()
 
 func _init_boid_data():
 	for i in BOID_COUNT:
@@ -78,6 +80,8 @@ func _process(delta):
 	if frame_counter % update_frequency == 0:
 		_update_boid_positions_and_velocities(delta)
 		_update_rotation_and_position_drawn()
+		if is_debug_enabled:
+			queue_redraw()
 
 func _build_spatial_grid():
 	var cell_size: float = max(NEIGHBOR_RADIUS, 50.0)
@@ -170,6 +174,33 @@ func _update_rotation_and_position_drawn():
 func _draw():
 	draw_rect(Rect2(BOX_TOPLEFT, Vector2(BOX_SIZE, BOX_SIZE)), Color.RED, false, 2.0)
 
+	if is_debug_enabled and BOID_COUNT > 0:
+		# Draw neighbor radius circle around first boid
+		draw_circle(positions[0], NEIGHBOR_RADIUS, Color(1, 0, 0, 0.3))
+		draw_arc(positions[0], NEIGHBOR_RADIUS, 0, TAU, 32, Color(1, 0, 0, 0.8), 2.0)
+
+		# Draw spatial grid partitioning
+		var cell_size: float = max(NEIGHBOR_RADIUS, 50.0)
+		var cols: int = int(BOX_SIZE / cell_size) + 1
+		var rows: int = int(BOX_SIZE / cell_size) + 1
+
+		# Draw vertical grid lines
+		for i in range(cols):
+			var x: float = BOX_TOPLEFT.x + i * cell_size
+			draw_line(Vector2(x, BOX_TOPLEFT.y), Vector2(x, BOX_TOPLEFT.y + BOX_SIZE), Color(0, 1, 0, 0.3), 1.0)
+
+		# Draw horizontal grid lines
+		for i in range(rows):
+			var y: float = BOX_TOPLEFT.y + i * cell_size
+			draw_line(Vector2(BOX_TOPLEFT.x, y), Vector2(BOX_TOPLEFT.x + BOX_SIZE, y), Color(0, 1, 0, 0.3), 1.0)
+
+		# Highlight cells that contain boids
+		for cell_coord in grid:
+			if grid[cell_coord].size() > 0:
+				var cell_x: float = BOX_TOPLEFT.x + cell_coord.x * cell_size
+				var cell_y: float = BOX_TOPLEFT.y + cell_coord.y * cell_size
+				draw_rect(Rect2(cell_x, cell_y, cell_size, cell_size), Color(0, 1, 0, 0.1), true)
+
 func _make_boid_mesh() -> ArrayMesh:
 
 	# Create a simple triangle mesh for the boid
@@ -256,3 +287,10 @@ func _on_number_of_boids_value_changed(value: float) -> void:
 func _on_radius_slider_value_changed(value: float) -> void:
 	NEIGHBOR_RADIUS = value
 	radius_label.text = "Radius: %s" % str(NEIGHBOR_RADIUS)
+	if is_debug_enabled:
+		queue_redraw()  # Update debug circle radius
+
+
+func _on_debug_button_toggled(toggled_on: bool) -> void:
+	is_debug_enabled = toggled_on
+	queue_redraw()  # Redraw to show/hide debug circle immediately

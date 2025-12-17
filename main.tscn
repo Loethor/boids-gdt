@@ -6,6 +6,7 @@
 script = ExtResource("1_ig7tw")
 
 [node name="Background" type="ColorRect" parent="."]
+visible = false
 offset_left = 100.0
 offset_right = 700.0
 offset_bottom = 600.0
@@ -28,10 +29,10 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -244.5
-offset_top = -165.0
-offset_right = 244.5
-offset_bottom = -53.0
+offset_left = -244.0
+offset_top = -181.0
+offset_right = 245.0
+offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -186,6 +187,14 @@ layout_mode = 2
 text = "Velocity"
 vertical_alignment = 1
 
+[node name="CenterContainer" type="CenterContainer" parent="CanvasLayer/Control/VBoxContainer2"]
+layout_mode = 2
+
+[node name="DebugButton" type="CheckButton" parent="CanvasLayer/Control/VBoxContainer2/CenterContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Debug"
+
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer2/HBoxContainer2/NumberOfBoids" to="." method="_on_number_of_boids_value_changed"]
 [connection signal="pressed" from="CanvasLayer/Control/VBoxContainer2/HBoxContainer2/RestartSimulationButton" to="." method="_on_restart_simulation_button_pressed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer2/HBoxContainer/VBoxContainer/Separation/SeparationSlider" to="." method="_on_separation_slider_value_changed"]
@@ -194,3 +203,4 @@ vertical_alignment = 1
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer2/HBoxContainer/VBoxContainer2/HBoxContainer/RadiusSlider" to="." method="_on_radius_slider_value_changed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer2/HBoxContainer/VBoxContainer2/Force/ForceSlider" to="." method="_on_force_slider_value_changed"]
 [connection signal="value_changed" from="CanvasLayer/Control/VBoxContainer2/HBoxContainer/VBoxContainer2/Velocity/VelocitySlider" to="." method="_on_velocity_slider_value_changed"]
+[connection signal="toggled" from="CanvasLayer/Control/VBoxContainer2/CenterContainer/DebugButton" to="." method="_on_debug_button_toggled"]
