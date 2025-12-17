@@ -21,6 +21,9 @@ const BOX_TOPLEFT := Vector2((WINDOW_SIZE - BOX_SIZE) / 2, 0)
 var positions := PackedVector2Array()
 var velocities := PackedVector2Array()
 
+# Spatial partitioning
+var grid: Dictionary[Vector2i, Array]= {}  # Dictionary: Vector2i -> Array[int] (cell coords -> boid indices)
+
 @onready var birds := MultiMeshInstance2D.new()
 
 @onready var separation_slider: HSlider = %SeparationSlider
@@ -41,6 +44,9 @@ var velocities := PackedVector2Array()
 
 @onready var number_of_boids: HSlider = %NumberOfBoids
 @onready var restart_simulation_button: Button = %RestartSimulationButton
+
+var update_frequency := 2  # Update every frame by default
+var frame_counter := 0
 
 func _ready():
 	number_of_boids.value = BOID_COUNT
@@ -68,31 +74,73 @@ func _init_multimesh():
 	add_child(birds)
 
 func _process(delta):
-	_update_boid_positions_and_velocities(delta)
-	_update_rotation_and_position_drawn()
+	frame_counter += 1
+	if frame_counter % update_frequency == 0:
+		_update_boid_positions_and_velocities(delta)
+		_update_rotation_and_position_drawn()
+
+func _build_spatial_grid():
+	var cell_size: float = max(NEIGHBOR_RADIUS, 50.0)
+	grid.clear()
+
+	for i in range(BOID_COUNT):
+		var cell_x: int = int((positions[i].x - BOX_TOPLEFT.x) / cell_size)
+		var cell_y: int = int((positions[i].y - BOX_TOPLEFT.y) / cell_size)
+		var cell_coord: Vector2i = Vector2i(cell_x, cell_y)
+
+		if not grid.has(cell_coord):
+			grid[cell_coord] = []
+		grid[cell_coord].append(i)
+
+func _get_nearby_boids(i: int) -> Array:
+	var cell_size: float = max(NEIGHBOR_RADIUS, 50.0)
+	var cell_x:int = int((positions[i].x - BOX_TOPLEFT.x) / cell_size)
+	var cell_y:int = int((positions[i].y - BOX_TOPLEFT.y) / cell_size)
+
+	var nearby: Array[int] = []
+
+	# Check 3x3 grid around the boid's cell
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var check_cell:Vector2i = Vector2i(cell_x + dx, cell_y + dy)
+			if grid.has(check_cell):
+				nearby.append_array(grid[check_cell])
+	return nearby
 
 func _update_boid_positions_and_velocities(delta):
+	_build_spatial_grid()
+
 	for i in range(BOID_COUNT):
 		var acceleration = _calc_flocking_forces(i)
 		velocities[i] += acceleration * delta
 		if velocities[i].length() > MAX_SPEED:
 			velocities[i] = velocities[i].normalized() * MAX_SPEED
 		positions[i] += velocities[i] * delta
-		_handle_boundaries(i)
+
+		# Boundary handling
+		if positions[i].x < BOX_TOPLEFT.x:
+			positions[i].x = BOX_TOPLEFT.x + BOX_SIZE
+		elif positions[i].x > BOX_TOPLEFT.x + BOX_SIZE:
+			positions[i].x = BOX_TOPLEFT.x
+		if positions[i].y < BOX_TOPLEFT.y:
+			positions[i].y = BOX_TOPLEFT.y + BOX_SIZE
+		elif positions[i].y > BOX_TOPLEFT.y + BOX_SIZE:
+			positions[i].y = BOX_TOPLEFT.y
 
 func _calc_flocking_forces(i: int) -> Vector2:
-	var separation = Vector2.ZERO
-	var alignment = Vector2.ZERO
-	var cohesion = Vector2.ZERO
-	var count = 0
+	var separation := Vector2.ZERO
+	var alignment := Vector2.ZERO
+	var cohesion := Vector2.ZERO
+	var count := 0
 
-	# Single loop for all three forces
-	for j in range(BOID_COUNT):
+	# Only check nearby boids using spatial partitioning
+	for j in _get_nearby_boids(i):
 		if i == j:
 			continue
-		var dist_sq = positions[i].distance_squared_to(positions[j])
+		var dist_sq: float = positions[i].distance_squared_to(positions[j])
 		if dist_sq < NEIGHBOR_RADIUS * NEIGHBOR_RADIUS and dist_sq > 0:
-			separation += (positions[i] - positions[j]) / max(sqrt(dist_sq), 0.01)
+			var dist: float = sqrt(dist_sq)
+			separation += (positions[i] - positions[j]) / max(dist, 0.01)
 			alignment += velocities[j]
 			cohesion += positions[j]
 			count += 1
@@ -112,75 +160,18 @@ func _calc_flocking_forces(i: int) -> Vector2:
 
 	return steer
 
-func _calc_separation(i: int) -> Vector2:
-	var steer := Vector2.ZERO
-	var count := 0
-	for j in range(BOID_COUNT):
-		if i == j:
-			continue
-		var dist = positions[i].distance_to(positions[j])
-		if dist < NEIGHBOR_RADIUS and dist > 0:
-			steer += (positions[i] - positions[j]) / max(dist, 0.01)
-			count += 1
-	if count > 0:
-		steer /= count
-		steer = steer.normalized() * MAX_SPEED - velocities[i]
-		steer = steer.limit_length(MAX_FORCE)
-	return steer
-
-func _calc_alignment(i: int) -> Vector2:
-	var avg_vel := Vector2.ZERO
-	var count := 0
-	for j in range(BOID_COUNT):
-		if i == j:
-			continue
-		var dist = positions[i].distance_to(positions[j])
-		if dist < NEIGHBOR_RADIUS:
-			avg_vel += velocities[j]
-			count += 1
-	if count > 0:
-		avg_vel /= count
-		var steer = avg_vel.normalized() * MAX_SPEED - velocities[i]
-		steer = steer.limit_length(MAX_FORCE)
-		return steer
-	return Vector2.ZERO
-
-func _calc_cohesion(i: int) -> Vector2:
-	var center := Vector2.ZERO
-	var count := 0
-	for j in range(BOID_COUNT):
-		if i == j:
-			continue
-		var dist = positions[i].distance_to(positions[j])
-		if dist < NEIGHBOR_RADIUS:
-			center += positions[j]
-			count += 1
-	if count > 0:
-		center /= count
-		var steer = (center - positions[i]).normalized() * MAX_SPEED - velocities[i]
-		steer = steer.limit_length(MAX_FORCE)
-		return steer
-	return Vector2.ZERO
-
-func _handle_boundaries(i):
-	if positions[i].x < BOX_TOPLEFT.x:
-		positions[i].x = BOX_TOPLEFT.x + BOX_SIZE
-	elif positions[i].x > BOX_TOPLEFT.x + BOX_SIZE:
-		positions[i].x = BOX_TOPLEFT.x
-	if positions[i].y < BOX_TOPLEFT.y:
-		positions[i].y = BOX_TOPLEFT.y + BOX_SIZE
-	elif positions[i].y > BOX_TOPLEFT.y + BOX_SIZE:
-		positions[i].y = BOX_TOPLEFT.y
-
 func _update_rotation_and_position_drawn():
-	for i in BOID_COUNT:
+	var transforms: MultiMesh = birds.multimesh
+	for i in range(BOID_COUNT):
 		var xform = Transform2D(velocities[i].angle(), positions[i])
-		birds.multimesh.set_instance_transform_2d(i, xform)
+		transforms.set_instance_transform_2d(i, xform)
+	birds.multimesh = transforms
 
 func _draw():
 	draw_rect(Rect2(BOX_TOPLEFT, Vector2(BOX_SIZE, BOX_SIZE)), Color.RED, false, 2.0)
 
 func _make_boid_mesh() -> ArrayMesh:
+
 	# Create a simple triangle mesh for the boid
 	var mesh := ArrayMesh.new()
 	var vertices := PackedVector2Array([
