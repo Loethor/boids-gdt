@@ -7,6 +7,7 @@ const INIT_SPEED := 80.0
 
 # Flocking parameters
 var NEIGHBOR_RADIUS := 60.0
+var NEIGHBOR_RADIUS_SQ := 3600.0
 var SEPARATION_WEIGHT := 1.2
 var ALIGNMENT_WEIGHT := 1.0
 var COHESION_WEIGHT := 1.0
@@ -49,6 +50,8 @@ var update_frequency := 2  # Update every frame by default
 var frame_counter := 0
 var is_debug_enabled := false
 
+var last_update_frame := -1
+
 func _ready():
 	_update_box_position()
 	number_of_boids.value = BOID_COUNT
@@ -68,12 +71,15 @@ func _update_box_position():
 	)
 
 func _init_boid_data():
+	positions.resize(BOID_COUNT)
+	velocities.resize(BOID_COUNT)
+
 	for i in BOID_COUNT:
-		positions.append(BOX_TOPLEFT + Vector2(
+		positions[i] = BOX_TOPLEFT + Vector2(
 			randf_range(50, BOX_SIZE - 50),
 			randf_range(50, BOX_SIZE - 50)
-		))
-		velocities.append(Vector2.RIGHT.rotated(randf() * TAU) * INIT_SPEED)
+		)
+		velocities[i] = Vector2.RIGHT.rotated(randf() * TAU) * INIT_SPEED
 
 func _init_multimesh():
 	var mm := MultiMesh.new()
@@ -93,7 +99,9 @@ func _process(delta):
 
 func _build_spatial_grid():
 	var cell_size: float = max(NEIGHBOR_RADIUS, 50.0)
-	grid.clear()
+
+	for key in grid:
+		grid[key].clear()
 
 	for i in range(BOID_COUNT):
 		var cell_x: int = int((positions[i].x - BOX_TOPLEFT.x) / cell_size)
@@ -129,15 +137,9 @@ func _update_boid_positions_and_velocities(delta):
 			velocities[i] = velocities[i].normalized() * MAX_SPEED
 		positions[i] += velocities[i] * delta
 
-		# Boundary handling
-		if positions[i].x < BOX_TOPLEFT.x:
-			positions[i].x = BOX_TOPLEFT.x + BOX_SIZE
-		elif positions[i].x > BOX_TOPLEFT.x + BOX_SIZE:
-			positions[i].x = BOX_TOPLEFT.x
-		if positions[i].y < BOX_TOPLEFT.y:
-			positions[i].y = BOX_TOPLEFT.y + BOX_SIZE
-		elif positions[i].y > BOX_TOPLEFT.y + BOX_SIZE:
-			positions[i].y = BOX_TOPLEFT.y
+		# Boundary wrapping
+		positions[i].x = fposmod(positions[i].x - BOX_TOPLEFT.x, BOX_SIZE) + BOX_TOPLEFT.x
+		positions[i].y = fposmod(positions[i].y - BOX_TOPLEFT.y, BOX_SIZE) + BOX_TOPLEFT.y
 
 func _calc_flocking_forces(i: int) -> Vector2:
 	var separation := Vector2.ZERO
@@ -150,22 +152,31 @@ func _calc_flocking_forces(i: int) -> Vector2:
 		if i == j:
 			continue
 		var dist_sq: float = positions[i].distance_squared_to(positions[j])
-		if dist_sq < NEIGHBOR_RADIUS * NEIGHBOR_RADIUS and dist_sq > 0:
-			var dist: float = sqrt(dist_sq)
-			separation += (positions[i] - positions[j]) / max(dist, 0.01)
+		if dist_sq < NEIGHBOR_RADIUS_SQ and dist_sq > 0:
+			# Separation: inverse square for more natural repulsion
+			var diff = positions[i] - positions[j]
+			separation += diff / max(dist_sq, 0.01)
+
+			# Alignment: average velocity
 			alignment += velocities[j]
+
+			# Cohesion: average position
 			cohesion += positions[j]
 			count += 1
 
 	var steer = Vector2.ZERO
 	if count > 0:
-		# Process all three at once
-		separation = (separation / count).normalized() * MAX_SPEED - velocities[i]
-		alignment = ((alignment / count).normalized() * MAX_SPEED - velocities[i])
-		cohesion = (((cohesion / count) - positions[i]).normalized() * MAX_SPEED - velocities[i])
+		# Separation: separate from neighbors
+		if separation.length_squared() > 0:
+			separation = separation.normalized() * MAX_SPEED - velocities[i]
+			separation = separation.limit_length(MAX_FORCE)
 
-		separation = separation.limit_length(MAX_FORCE)
+		# Alignment: steer towards average velocity
+		alignment = (alignment / count).normalized() * MAX_SPEED - velocities[i]
 		alignment = alignment.limit_length(MAX_FORCE)
+
+		# Cohesion: steer towards average position
+		cohesion = ((cohesion / count) - positions[i]).normalized() * MAX_SPEED - velocities[i]
 		cohesion = cohesion.limit_length(MAX_FORCE)
 
 		steer = separation * SEPARATION_WEIGHT + alignment * ALIGNMENT_WEIGHT + cohesion * COHESION_WEIGHT
@@ -173,6 +184,11 @@ func _calc_flocking_forces(i: int) -> Vector2:
 	return steer
 
 func _update_rotation_and_position_drawn():
+
+	if last_update_frame == frame_counter:
+		return  # Already updated this frame
+	last_update_frame = frame_counter
+
 	var transforms: MultiMesh = birds.multimesh
 	for i in range(BOID_COUNT):
 		var xform = Transform2D(velocities[i].angle(), positions[i])
@@ -281,6 +297,15 @@ func _on_restart_simulation_button_pressed() -> void:
 	positions.clear()
 	velocities.clear()
 	BOID_COUNT = NEW_BOID_COUNT
+
+	# Adjust update frequency based on boid count for performance
+	if BOID_COUNT > 1000:
+		update_frequency = 3
+	elif BOID_COUNT > 500:
+		update_frequency = 2
+	else:
+		update_frequency = 1
+
 	if birds.multimesh:
 		birds.multimesh.instance_count = BOID_COUNT
 	_init_boid_data()
@@ -294,6 +319,7 @@ func _on_number_of_boids_value_changed(value: float) -> void:
 
 func _on_radius_slider_value_changed(value: float) -> void:
 	NEIGHBOR_RADIUS = value
+	NEIGHBOR_RADIUS_SQ = value * value
 	radius_label.text = "Radius: %s" % str(NEIGHBOR_RADIUS)
 	if is_debug_enabled:
 		queue_redraw()  # Update debug circle radius
