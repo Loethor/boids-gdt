@@ -22,7 +22,7 @@ var positions := PackedVector2Array()
 var velocities := PackedVector2Array()
 
 # Spatial partitioning
-var grid: Dictionary[Vector2i, Array]= {}  # Dictionary: Vector2i -> Array[int] (cell coords -> boid indices)
+var grid = {}
 
 @onready var birds := MultiMeshInstance2D.new()
 
@@ -101,7 +101,7 @@ func _get_nearby_boids(i: int) -> Array:
 	var cell_x:int = int((positions[i].x - BOX_TOPLEFT.x) / cell_size)
 	var cell_y:int = int((positions[i].y - BOX_TOPLEFT.y) / cell_size)
 
-	var nearby: Array[int] = []
+	var nearby = []
 
 	# Check 3x3 grid around the boid's cell
 	for dx in range(-1, 2):
