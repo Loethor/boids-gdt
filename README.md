@@ -4,6 +4,7 @@ A real-time flocking simulation implementing Craig Reynolds' classic Boids algor
 
 🎮 **[Try the live demo](https://loethor.github.io/boids-gdt/)**
 
+![Boids Simulation](images/boids.gif)
 
 ## Overview
 
@@ -21,6 +22,8 @@ This project demonstrates emergent flocking behavior through three simple rules:
 - Web export compatible (WebGL2)
 
 ## Controls
+
+![Controls](images/boids_parameters.gif)
 
 ### Adjustable Parameters
 
