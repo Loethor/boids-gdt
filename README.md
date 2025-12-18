@@ -18,7 +18,7 @@ This project demonstrates emergent flocking behavior through three simple rules:
 - Interactive parameter tuning via sliders
 - Spatial partitioning for optimized neighbor searches
 - Debug visualization mode (grid partitioning and neighbor radius)
-- Real-time control of up to 200+ boids with smooth performance
+- Real-time control of up to 500 boids with smooth performance
 - Web export compatible (WebGL2)
 
 ## Controls
@@ -66,6 +66,13 @@ Instead of checking every boid against every other boid (O(n²)), the simulation
 - Uses Godot's `MultiMeshInstance2D` for efficient batch rendering
 - All boids rendered in a single draw call
 - Minimal state changes between frames
+
+## GPU Version
+
+For experimentation, I also created a version using a compute shader in Godot (without interactive controls). Check it out [here](https://github.com/Loethor/boids-gpu). This GPU-based version can smoothly simulate 10000+ boids.
+
+![GPU](images/boids_gpu.gif)
+
 
 ## License
 
